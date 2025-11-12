@@ -6,13 +6,28 @@
 <title>Coffee Counter – Coffee Sisters</title>
 <meta name="theme-color" content="#0b0f14" />
 <link id="runtime-manifest" rel="manifest">
+<script>
+// ✅ Service Worker Registration for Offline Support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((registration) => {
+        console.log('✅ [SW] Service Worker registered successfully:', registration.scope);
+      })
+      .catch((error) => {
+        console.log('⚠️ [SW] Service Worker registration failed:', error);
+      });
+  });
+}
+</script>
 <style>
   :root{--bg:#0b0f14;--card:#0f1822;--muted:#7b8a9a;--text:#e6eef7;--accent:#3db4ff;--danger:#ff6b6b;--ring:#263242;--brand:#f0a61f}
   *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141c);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
   .wrap{max-width:1100px;margin:0 auto;padding:20px}
-  #splash{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999}
-  #splash img{max-width:min(70vw,420px);height:auto;display:block}
-  .fade-out{animation:fadeout .7s ease forwards} @keyframes fadeout{to{opacity:0;visibility:hidden}}
+  #splash{position:fixed;inset:0;background:linear-gradient(135deg,#0b0f14,#1a2530);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(2px)}
+  #splash img{max-width:min(70vw,420px);height:auto;display:block;animation:splashPulse 1.2s ease-in-out}
+  .fade-out{animation:fadeout 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards} @keyframes fadeout{0%{opacity:1;visibility:visible}95%{opacity:0;visibility:visible}100%{opacity:0;visibility:hidden}}
+  @keyframes splashPulse{0%{opacity:0;transform:scale(0.7)},50%{opacity:1;transform:scale(1.08)},100%{opacity:1;transform:scale(1)}}
   .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .btn,.btn-ghost,.btn-accent,.btn-danger{padding:10px 14px;border-radius:12px;border:1px solid var(--ring);background:#12202f;color:var(--text);cursor:pointer}
   .btn-accent{background:#123047;border-color:#1f4d6e} .btn-danger{background:#2b1414;border-color:#4d1f1f}
@@ -27,6 +42,31 @@
   details>summary{cursor:pointer;padding:10px 0} table{width:100%;border-collapse:collapse} th,td{border-bottom:1px solid var(--ring);padding:8px 6px;text-align:left}
   .brand{display:flex;align-items:center;gap:12px;margin:0 0 14px 0} .brand img{width:44px;height:44px;object-fit:contain;display:block}
   .listening{border-color:#ff6b6b !important}
+  /* 🔢 NUMERIC KEYPAD STYLES */
+  #keypadToggle{position:fixed;bottom:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--brand);color:#0b0f14;border:none;font-size:22px;cursor:pointer;z-index:99;box-shadow:0 4px 12px rgba(240,166,31,0.4);transition:all 0.2s;font-weight:700}
+  #keypadToggle:hover{transform:scale(1.1);box-shadow:0 6px 16px rgba(240,166,31,0.6)}
+  #keypadToggle:active{transform:scale(0.95)}
+  #keypadPanel{position:fixed;bottom:80px;right:20px;width:280px;background:var(--card);border:2px solid var(--brand);border-radius:12px;padding:12px;z-index:98;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+  #keypadPanel.visible{display:block;animation:slideUp 0.2s ease}
+  @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .keypad-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:12px;font-weight:700}
+  .keypad-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0}
+  .keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+  .keypad-btn{padding:14px;border-radius:8px;border:1px solid var(--ring);background:#152635;color:var(--text);cursor:pointer;font-weight:600;font-size:16px;transition:all 0.1s}
+  .keypad-btn:hover{background:#1a3448;transform:scale(1.05)}
+  .keypad-btn:active{transform:scale(0.95)}
+  .keypad-btn.zero{grid-column:span 3}
+  .keypad-display{background:#0f1c29;border:1px solid var(--ring);border-radius:8px;padding:12px;margin-bottom:8px;font-size:20px;font-weight:600;color:var(--brand);text-align:center;font-family:monospace;min-height:32px}
+  .keypad-controls{display:flex;gap:6px;margin-top:8px}
+  .keypad-btn.multiply{background:#2b5a3a;border-color:#4ade80;font-size:18px;font-weight:700}
+  .keypad-btn.multiply:hover{background:#3a7a4a;box-shadow:0 0 8px rgba(74,222,128,0.3)}
+  .keypad-clear{flex:1;background:#152635;color:var(--text);font-weight:600;padding:10px;border-radius:8px;border:1px solid var(--ring);cursor:pointer}
+  .keypad-clear:hover{background:#1a3448}
+  .keypad-confirm{flex:1.5;background:#4ade80;color:#0b0f14;font-weight:700;padding:10px;border-radius:8px;border:none;cursor:pointer;font-size:14px}
+  .keypad-confirm:hover{background:#22c55e}
+  .keypad-confirm:active{transform:scale(0.95)}
+  .keypad-info{background:#0f1c29;border:1px solid var(--ring);border-radius:8px;padding:8px;margin-top:8px;font-size:12px;color:var(--muted);text-align:center;line-height:1.4}
+
 </style>
 </head>
 <body>
@@ -122,6 +162,232 @@
 
 const LS_KEY_CFG='coffee_cfg_v1', LS_KEY_LOG='coffee_log_v1';
 const state={cfg:null,log:null,lastActionId:null,historyLimit:50};
+
+// 🔢 NUMERIC KEYPAD FUNCTIONS - WITH ITEM/QTY SEPARATOR
+let keypadState = { 
+  input: '',
+  hasMultiply: false
+};
+
+function updateKeypadDisplay() {
+  const display = document.getElementById('keypadDisplay');
+  if (!display) return;
+  display.textContent = keypadState.input || '0';
+  console.log(`🔢 [KEYPAD] Display: ${keypadState.input || '0'}`);
+}
+
+function updateKeypadInfo() {
+  const info = document.getElementById('keypadInfo');
+  if (!info) return;
+  
+  if (!keypadState.input) {
+    info.textContent = 'Πατήστε αριθμό ή ×';
+    return;
+  }
+  
+  if (!keypadState.hasMultiply) {
+    const itemNum = keypadState.input;
+    let item = null;
+    if (state.cfg && state.cfg.items) {
+      item = state.cfg.items.find(it => it.hotkey === itemNum);
+      if (!item && itemNum.length <= 2) {
+        const idx = parseInt(itemNum);
+        if (idx >= 0 && idx < state.cfg.items.length) item = state.cfg.items[idx];
+      }
+    }
+    info.textContent = item ? `📍 ${itemNum} = ${item.name} (1x)` : `📍 ${itemNum}`;
+  } else {
+    const parts = keypadState.input.split('×');
+    const code = parts[0];
+    const mult = parts[1] || '';
+    let item = null;
+    if (state.cfg && state.cfg.items) {
+      item = state.cfg.items.find(it => it.hotkey === code);
+      if (!item && code.length <= 2) {
+        const idx = parseInt(code);
+        if (idx >= 0 && idx < state.cfg.items.length) item = state.cfg.items[idx];
+      }
+    }
+    if (item && mult) {
+      const qty = parseInt(mult);
+      const total = (item.price * qty).toFixed(2);
+      info.textContent = `📦 ${code}×${mult} = ${qty}x ${item.name} = ${total}€`;
+    } else if (item) {
+      info.textContent = `📦 ${code}× = ${item.name} × ???`;
+    } else {
+      info.textContent = `❓ ${keypadState.input}`;
+    }
+  }
+}
+
+function keypadAddDigit(digit) {
+  keypadState.input = keypadState.input + digit;
+  if (keypadState.input.length > 5) keypadState.input = keypadState.input.slice(-5);
+  updateKeypadDisplay();
+  updateKeypadInfo();
+}
+function keypadMultiply() {
+  if (!keypadState.input || keypadState.input === '') {
+    alert('Πρώτα επιλέξτε κωδικό καφέ!');
+    return;
+  }
+  if (keypadState.hasMultiply) return;
+  keypadState.input = keypadState.input + '×';
+  keypadState.hasMultiply = true;
+  updateKeypadDisplay();
+  updateKeypadInfo();
+}
+function keypadClear() {
+  keypadState.input = '';
+  keypadState.hasMultiply = false;
+  updateKeypadDisplay();
+  updateKeypadInfo();
+}
+function keypadConfirm() {
+  const rawInput = keypadState.input;
+  if (!rawInput || rawInput === '') {
+    alert('Δεν έχει εισαχθεί ποσότητα!');
+    return;
+  }
+  
+  let coffeeCode, quantity = 1;
+  if (keypadState.hasMultiply) {
+    const parts = rawInput.split('×');
+    coffeeCode = parts[0];
+    quantity = parseInt(parts[1]) || 1;
+    if (quantity < 1) quantity = 1;
+  } else {
+    coffeeCode = rawInput;
+  }
+  
+  let item = null;
+  if (state.cfg && state.cfg.items) {
+    item = state.cfg.items.find(it => it.hotkey === coffeeCode);
+    if (!item && coffeeCode.length <= 2) {
+      const idx = parseInt(coffeeCode);
+      if (idx >= 0 && idx < state.cfg.items.length) item = state.cfg.items[idx];
+    }
+  }
+  
+  if (!item) {
+    alert(`❌ Δεν υπάρχει είδος "${coffeeCode}"`);
+    return;
+  }
+  
+  for (let i = 0; i < quantity; i++) {
+    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random() + i);
+    const rec = { id, t: Date.now(), itemId: item.id, price: item.price };
+    state.log.push(rec);
+  }
+  
+  state.lastActionId = null;
+  saveLog();
+  flash('#cnt_' + item.id);
+  refreshStats();
+  refreshHistory();
+  
+  const info = document.getElementById('keypadInfo');
+  if (info) {
+    info.textContent = `✅ +${quantity}x ${item.name}`;
+    setTimeout(() => keypadClear(), 1500);
+  } else {
+    keypadClear();
+  }
+}
+function buildNumericKeypad() {
+  console.log(`🔨 [KEYPAD] Building numeric keypad...`);
+  
+  const grid = document.getElementById('keypadGrid');
+  if (!grid) {
+    console.error(`❌ [KEYPAD] Grid element not found!`);
+    return;
+  }
+  
+  grid.innerHTML = '';
+  
+  // 1-9 buttons
+  for (let i = 1; i <= 9; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'keypad-btn';
+    btn.textContent = i;
+    btn.onclick = () => keypadAddDigit(i);
+    grid.appendChild(btn);
+  }
+  
+  // 0 button (span 3)
+  const zeroBtn = document.createElement('button');
+  zeroBtn.className = 'keypad-btn zero';
+  zeroBtn.textContent = '0';
+  zeroBtn.onclick = () => keypadAddDigit(0);
+  grid.appendChild(zeroBtn);
+  
+  console.log(`✅ [KEYPAD] Numeric buttons created (0-9)`);
+}
+
+function setupNumericKeypad() {
+  console.log(`⚙️ [KEYPAD] Setting up keypad event listeners...`);
+  
+  const toggle = document.getElementById('keypadToggle');
+  const panel = document.getElementById('keypadPanel');
+  const multiplyBtn = document.getElementById('keypadMultiply');
+  const clearBtn = document.getElementById('keypadClear');
+  const confirmBtn = document.getElementById('keypadConfirm');
+  
+  if (!toggle || !panel) {
+    console.error(`❌ [KEYPAD] Required elements not found!`);
+    return;
+  }
+  
+  if (toggle) {
+    toggle.onclick = () => {
+      panel.classList.toggle('visible');
+      const isVisible = panel.classList.contains('visible');
+      console.log(`🔢 [KEYPAD] Toggle clicked - Panel ${isVisible ? 'OPENED' : 'CLOSED'}`);
+    };
+    console.log(`✅ [KEYPAD] Toggle button setup`);
+  }
+  
+  if (multiplyBtn) {
+    multiplyBtn.onclick = keypadMultiply;
+    console.log(`✅ [KEYPAD] Multiply button setup`);
+  }
+  
+  if (clearBtn) {
+    clearBtn.onclick = keypadClear;
+    console.log(`✅ [KEYPAD] Clear button setup`);
+  }
+  
+  if (confirmBtn) {
+    confirmBtn.onclick = keypadConfirm;
+    console.log(`✅ [KEYPAD] Confirm button setup`);
+  }
+  
+  console.log(`✅ [KEYPAD] All event listeners setup complete`);
+}
+
+// Setup keyboard shortcuts (1-0)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    console.log(`⌫ [KEYBOARD] Backspace pressed - Undo`);
+    undoLast();
+    return;
+  }
+  
+  // Physical keyboard shortcuts for single items (1-0) - still works!
+  const digit = parseInt(e.key);
+  if (digit >= 0 && digit <= 9 && !document.getElementById('keypadPanel').classList.contains('visible')) {
+    console.log(`⌨️ [KEYBOARD] Key pressed: ${digit}`);
+    if (state.cfg && state.cfg.items[digit]) {
+      const item = state.cfg.items[digit];
+      console.log(`⌨️ [KEYBOARD] Single sale: +1x ${item.name}`);
+      addSale(item.id);
+    } else {
+      console.warn(`⚠️ [KEYBOARD] Item #${digit} not found`);
+    }
+  }
+});
+
 function loadCfg(){
   const def={currency:'€',items:[
     {id:'espresso',name:'Espresso',price:1.70,hotkey:'1'},
@@ -323,18 +589,27 @@ function wire(){
 
 function runSelfTests(){
   try{
-    const c=loadCfg(); console.assert(Array.isArray(c.items) && c.items.length>0, 'loadCfg items');
-    const csv = [['a','b'],['c','d']].map(r=> r.join(',')).join('\n'); console.assert(csv.includes('\n'),'CSV newline');
-    const before = state.log.length; const id=state.cfg.items[0].id; addSale(id); console.assert(state.log.length===before+1,'addSale push');
+    const c=loadCfg(); 
+    if(!Array.isArray(c.items) || c.items.length===0) console.warn('loadCfg items check failed');
+    const csv = [['a','b'],['c','d']].map(r=> r.join(',')).join('\n'); 
+    if(!csv.includes('\n')) console.warn('CSV newline check failed');
+    const before = state.log.length; const id=state.cfg.items[0].id; addSale(id); 
+    if(state.log.length!==before+1) console.warn('addSale push check failed');
   }catch(err){ console.warn('Self tests issue:', err); }
 }
 
 function init(){
   state.cfg = loadCfg(); state.log = loadLog();
-  buildGrid(); wire(); refreshStats(); refreshHistory(); runSelfTests();
+  buildGrid(); buildNumericKeypad(); setupNumericKeypad(); wire(); refreshStats(); refreshHistory(); runSelfTests();
   setTimeout(()=>{ document.getElementById('splash').classList.add('fade-out'); document.getElementById('app').hidden=false; }, 1600);
 }
-init();
+
+// Make sure init runs after DOM is loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
 if('serviceWorker' in navigator){
   const code = `
@@ -354,5 +629,24 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register(url).catch(console.warn);
 }
 </script>
+<!-- 🔢 NUMERIC KEYPAD -->
+<button id="keypadToggle" title="Αριθμητικό Πληκτρολόγιο">🔢</button>
+<div id="keypadPanel">
+  <div class="keypad-header">
+    <span id="keypadModeDisplay">📍 ITEM</span>
+    <button class="keypad-close" onclick="document.getElementById('keypadPanel').classList.remove('visible')">✕</button>
+  </div>
+  <div class="keypad-display" id="keypadDisplay">0</div>
+  <div class="keypad-grid" id="keypadGrid">
+    <!-- Buttons 1-9, 0 will be generated by JS -->
+  </div>
+  <div class="keypad-controls">
+    <button id="keypadMultiply" class="keypad-btn multiply" title="Πολλαπλασιασμός">×</button>
+    <button id="keypadClear" class="keypad-clear">🗑️ Clear</button>
+    <button id="keypadConfirm" class="keypad-confirm">✓ Προσθήκη</button>
+  </div>
+  <div class="keypad-info" id="keypadInfo">📍 ITEM: Επιλέξτε αριθμό</div>
+</div>
+
 </body>
 </html>
